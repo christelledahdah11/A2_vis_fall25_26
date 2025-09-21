@@ -91,8 +91,8 @@ k3.metric("Total Facilities (filtered)", int(filt["Total Facilities"].sum()))
 k4.metric("Towns (filtered)", len(filt))
 
 # --------- Tabs ---------
-tab1, tab2, tab3, tab4, tab5 = st.tabs(
-    ["🏆 Rankings", "📈 Relationships", "🧮 Correlations", "📊 Distribution", "🧠 Auto-Insights"]
+tab1, tab2, tab3 = st.tabs(
+    ["🏆 Rankings", "🧮 Correlations", "📊 Distribution"]
 )
 
 # ===== TAB 1: Rankings =====
@@ -127,50 +127,8 @@ with tab1:
 
     st.caption("Tip: use the sidebar to raise the Index threshold and watch leaders reshuffle.")
 
-# ===== TAB 2: Relationships =====
+# ===== TAB 2: Correlations =====
 with tab2:
-    st.subheader("Tourism Index vs Facilities")
-    rel_cols = list(facility_cols.values())
-    col1, col2 = st.columns(2, gap="large")
-
-    with col1:
-        sel_fac = st.selectbox("X-axis facility", rel_cols, index=rel_cols.index("Total number of restaurants"))
-        fig_scatter = px.scatter(
-            filt,
-            x=sel_fac,
-            y="Tourism Index",
-            color="Town",
-            size=filt[rel_cols].sum(axis=1),  # proxy size by total facilities for the row
-            trendline="ols",
-            hover_name="Town",
-            title=None,
-        )
-        fig_scatter.update_layout(xaxis_title=sel_fac, yaxis_title="Tourism Index")
-        st.plotly_chart(fig_scatter, use_container_width=True)
-
-    with col2:
-        st.subheader("Facility mix vs Index (ternary)")
-        tern = filt.rename(columns={
-            "Total number of hotels": "Hotels",
-            "Total number of cafes": "Cafes",
-            "Total number of restaurants": "Restaurants",
-        }).copy()
-
-        # avoid negatives/NaNs and all-zero rows
-        tern[["Hotels", "Cafes", "Restaurants"]] = tern[["Hotels", "Cafes", "Restaurants"]].clip(lower=0).fillna(0)
-        tern = tern[(tern[["Hotels", "Cafes", "Restaurants"]].sum(axis=1) > 0)]
-
-        fig_tern = px.scatter_ternary(
-            tern,
-            a="Hotels", b="Cafes", c="Restaurants",
-            color="Tourism Index",
-            hover_name="Town",
-            size=tern[["Hotels", "Cafes", "Restaurants"]].sum(axis=1),
-        )
-        st.plotly_chart(fig_tern, use_container_width=True)
-
-# ===== TAB 3: Correlations =====
-with tab3:
     st.subheader("Correlation Heatmap")
     corr_cols = ["Tourism Index", *facility_cols.values(), "Total Facilities"]
     corr = filt[corr_cols].corr(numeric_only=True).round(2)
@@ -188,8 +146,8 @@ with tab3:
     st.write("**Correlation with Tourism Index (descending):**")
     st.dataframe(topcorr.to_frame("Correlation"))
 
-# ===== TAB 4: Distribution =====
-with tab4:
+# ===== TAB 3: Distribution =====
+with tab3:
     c1, c2 = st.columns(2, gap="large")
     with c1:
         st.subheader("Tourism Index distribution")
@@ -205,44 +163,6 @@ with tab4:
         )
         fig_stack = px.bar(long, x="Town", y="Count", color="Type", barmode="stack")
         st.plotly_chart(fig_stack, use_container_width=True)
-
-# ===== TAB 5: Auto-Insights =====
-with tab5:
-    st.subheader("Signal, not noise.")
-
-    # Leaders & laggards by Tourism Index
-    leaders = filt.nlargest(3, "Tourism Index")[["Town", "Tourism Index"]]
-    laggards = filt.nsmallest(3, "Tourism Index")[["Town", "Tourism Index"]]
-
-    # Which facility best aligns with Tourism Index (highest corr)
-    corr_idx = corr["Tourism Index"].drop("Tourism Index").idxmax()
-    corr_val = float(corr["Tourism Index"].loc[corr_idx])
-
-    # Outliers by facility intensity (|z| >= 1.5)
-    out = town_agg[(town_agg["Facility Intensity (z)"].abs() >= 1.5) &
-                   (town_agg["Tourism Index"] >= idx_cut)]
-    out = out.sort_values("Facility Intensity (z)", ascending=False)
-
-    with st.container(border=True):
-        st.markdown("**Leaders (Top 3 by Tourism Index)**")
-        st.table(leaders.set_index("Town"))
-
-    with st.container(border=True):
-        st.markdown("**Laggards (Bottom 3 by Tourism Index)**")
-        st.table(laggards.set_index("Town"))
-
-    with st.container(border=True):
-        st.markdown("**Best-aligned facility with Tourism Index**")
-        st.write(f"- **{corr_idx}** shows the strongest positive alignment with Tourism Index (ρ = {corr_val:.2f}).")
-        st.caption("Correlation is descriptive, not causal. Validate with domain context.")
-
-    with st.container(border=True):
-        st.markdown("**Outlier towns by facility intensity (z-score ≥ 1.5)**")
-        if len(out):
-            show = out[["Town", "Tourism Index", "Total Facilities", "Facility Intensity (z)"]]
-            st.dataframe(show.sort_values("Facility Intensity (z)", ascending=False), use_container_width=True)
-        else:
-            st.write("No material outliers given current filters.")
 
 # --------- Utilities ---------
 st.divider()
