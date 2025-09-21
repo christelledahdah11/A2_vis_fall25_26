@@ -91,8 +91,8 @@ k3.metric("Total Facilities (filtered)", int(filt["Total Facilities"].sum()))
 k4.metric("Towns (filtered)", len(filt))
 
 # --------- Tabs ---------
-tab1, tab2, tab3 = st.tabs(
-    ["🏆 Rankings", "🧮 Correlations", "📊 Distribution"]
+tab1, tab2 = st.tabs(
+    ["🏆 Rankings", "🧮 Correlations"]
 )
 
 # ===== TAB 1: Rankings =====
@@ -145,24 +145,6 @@ with tab2:
     topcorr = corr["Tourism Index"].drop("Tourism Index").sort_values(ascending=False)
     st.write("**Correlation with Tourism Index (descending):**")
     st.dataframe(topcorr.to_frame("Correlation"))
-
-# ===== TAB 3: Distribution =====
-with tab3:
-    c1, c2 = st.columns(2, gap="large")
-    with c1:
-        st.subheader("Tourism Index distribution")
-        fig_hist = px.histogram(filt, x="Tourism Index", nbins=15, marginal="box")
-        st.plotly_chart(fig_hist, use_container_width=True)
-    with c2:
-        st.subheader("Facility totals per town (stacked)")
-        long = filt.melt(
-            id_vars=["Town", "Tourism Index"],
-            value_vars=list(facility_cols.values()),
-            var_name="Type",
-            value_name="Count",
-        )
-        fig_stack = px.bar(long, x="Town", y="Count", color="Type", barmode="stack")
-        st.plotly_chart(fig_stack, use_container_width=True)
 
 # --------- Utilities ---------
 st.divider()
